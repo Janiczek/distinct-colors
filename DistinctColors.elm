@@ -19,9 +19,14 @@ But we're doing HSL instead of HSV (because HSL was more readily available than 
 I don't know what effect does that have.
 
 -}
-colors : Float -> Float -> Int -> Generator (List Color)
-colors saturation lightness amount =
-    if amount > 0 then
+colors :
+    { saturation : Float
+    , lightness : Float
+    , numberOfColors : Int
+    }
+    -> Generator (List Color)
+colors { saturation, lightness, numberOfColors } =
+    if numberOfColors > 0 then
         firstColor saturation lightness
             |> Random.andThen
                 (\( color, hue ) ->
@@ -29,7 +34,7 @@ colors saturation lightness amount =
                         saturation
                         lightness
                         [ color ]
-                        (amount - 1)
+                        (numberOfColors - 1)
                         hue
                 )
     else
