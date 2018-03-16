@@ -1,12 +1,13 @@
-module DistinctColors exposing (colors)
+module DistinctColors exposing (colors, nextColor)
 
 {-| Generator of distinct colors.
 
-@docs colors
+@docs colors, nextColor
 
 -}
 
 import Color exposing (Color)
+import List.Extra
 import Random.Pcg as Random exposing (Generator)
 
 
@@ -28,57 +29,31 @@ colors :
 colors { saturation, lightness, numberOfColors } =
     if numberOfColors > 0 then
         firstColor saturation lightness
-            |> Random.andThen
-                (\( color, hue ) ->
-                    threadColors
-                        saturation
-                        lightness
-                        [ color ]
-                        (numberOfColors - 1)
-                        hue
+            |> Random.map
+                (\color ->
+                    ( color, numberOfColors - 1 )
+                        |> List.Extra.iterate
+                            (\( color, numberOfColors ) ->
+                                if numberOfColors > 0 then
+                                    Just ( nextColor color, numberOfColors - 1 )
+                                else
+                                    Nothing
+                            )
+                        |> List.map Tuple.first
                 )
     else
         Random.constant []
-
-
-threadColors : Float -> Float -> List Color -> Int -> Float -> Generator (List Color)
-threadColors saturation lightness colorsSoFar amount previousHue =
-    if amount > 0 then
-        dependentColor saturation lightness previousHue
-            |> Random.andThen
-                (\( color, hue ) ->
-                    threadColors
-                        saturation
-                        lightness
-                        (color :: colorsSoFar)
-                        (amount - 1)
-                        hue
-                )
-    else
-        Random.constant colorsSoFar
 
 
 
 -- colors
 
 
-firstColor : Float -> Float -> Generator ( Color, Float )
+firstColor : Float -> Float -> Generator Color
 firstColor saturation lightness =
     Random.map
-        (colorAndHue saturation lightness)
+        (hslColor saturation lightness)
         firstHue
-
-
-dependentColor : Float -> Float -> Float -> Generator ( Color, Float )
-dependentColor saturation lightness previousHue =
-    Random.map
-        (colorAndHue saturation lightness)
-        (nextHue previousHue)
-
-
-colorAndHue : Float -> Float -> Float -> ( Color, Float )
-colorAndHue saturation lightness hue =
-    ( hslColor saturation lightness hue, hue )
 
 
 {-| takes hue as a number 0..1
@@ -88,6 +63,20 @@ hslColor saturation lightness hue01 =
     Color.hsl (hue01 * 2 * pi) saturation lightness
 
 
+{-| Moves the hue of the current color by 1/phi (0.618...)
+-}
+nextColor : Color -> Color
+nextColor color =
+    let
+        { hue, saturation, lightness } =
+            Color.toHsl color
+
+        hue01 =
+            hue / 2 / pi
+    in
+    hslColor saturation lightness (moveHue hue01)
+
+
 
 -- hue
 
@@ -95,11 +84,6 @@ hslColor saturation lightness hue01 =
 firstHue : Generator Float
 firstHue =
     Random.float 0 1
-
-
-nextHue : Float -> Generator Float
-nextHue previousHue =
-    Random.constant (moveHue previousHue)
 
 
 moveHue : Float -> Float
