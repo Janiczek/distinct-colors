@@ -1,8 +1,8 @@
-module DistinctColors exposing (colors, nextColor)
+module DistinctColors exposing (color, colors, nextColor)
 
 {-| Generator of distinct colors.
 
-@docs colors, nextColor
+@docs colors, color, nextColor
 
 -}
 
@@ -43,6 +43,13 @@ colors { saturation, lightness, numberOfColors } =
                 )
     else
         Random.constant []
+
+
+{-| Generate a color with given saturation and lightness and a random hue.
+-}
+color : { saturation : Float, lightness : Float } -> Generator Color
+color { saturation, lightness } =
+    firstColor saturation lightness
 
 
 
