@@ -7,6 +7,7 @@ module DistinctColors exposing (color, colors, nextColor)
 -}
 
 import Color exposing (Color)
+import Color.Hcl
 import List.Extra
 import Random.Pcg as Random exposing (Generator)
 
@@ -16,19 +17,19 @@ Nice for programmatically assigning colors to elements in a list (users, ...).
 
 Algorithm: basically this:
 <https://martin.ankerl.com/2009/12/09/how-to-create-random-colors-programmatically/>
-But we're doing HSL instead of HSV (because HSL was more readily available than HSV).
-I don't know what effect does that have.
+But we're doing HCL instead of HSV.
 
 -}
 colors :
-    { saturation : Float
-    , lightness : Float
+    { chroma : Float
+    , luminance : Float
+    , alpha : Float
     , numberOfColors : Int
     }
     -> Generator (List Color)
-colors { saturation, lightness, numberOfColors } =
+colors { chroma, luminance, alpha, numberOfColors } =
     if numberOfColors > 0 then
-        firstColor saturation lightness
+        firstColor chroma luminance alpha
             |> Random.map
                 (\color ->
                     ( color, numberOfColors - 1 )
@@ -45,43 +46,45 @@ colors { saturation, lightness, numberOfColors } =
         Random.constant []
 
 
-{-| Generate a color with given saturation and lightness and a random hue.
+{-| Generate a color with given chroma, luminance, alpha and a random hue.
 -}
-color : { saturation : Float, lightness : Float } -> Generator Color
-color { saturation, lightness } =
-    firstColor saturation lightness
+color : { chroma : Float, luminance : Float, alpha : Float } -> Generator Color
+color { chroma, luminance, alpha } =
+    firstColor chroma luminance alpha
 
 
 
 -- colors
 
 
-firstColor : Float -> Float -> Generator Color
-firstColor saturation lightness =
+firstColor : Float -> Float -> Float -> Generator Color
+firstColor chroma luminance alpha =
     Random.map
-        (hslColor saturation lightness)
+        (hclColor chroma luminance alpha)
         firstHue
 
 
-{-| takes hue as a number 0..1
--}
-hslColor : Float -> Float -> Float -> Color
-hslColor saturation lightness hue01 =
-    Color.hsl (hue01 * 2 * pi) saturation lightness
+hclColor : Float -> Float -> Float -> Float -> Color
+hclColor chroma luminance alpha hue =
+    Color.Hcl.toColor
+        { chroma = chroma
+        , luminance = luminance
+        , hue = hue
+        , alpha = alpha
+        }
 
 
-{-| Moves the hue of the current color by 1/phi (0.618...)
+{-| Moves the hue of the current color by 1/phi (0.618...) when hue is 0..1.
+
+This means that we have to move the hue 222.49224 degrees when hue is 0..360.
+
 -}
 nextColor : Color -> Color
 nextColor color =
-    let
-        { hue, saturation, lightness } =
-            Color.toHsl color
-
-        hue01 =
-            hue / 2 / pi
-    in
-    hslColor saturation lightness (moveHue hue01)
+    color
+        |> Color.Hcl.fromColor
+        |> (\color -> { color | hue = moveHue color.hue })
+        |> Color.Hcl.toColor
 
 
 
@@ -90,25 +93,20 @@ nextColor color =
 
 firstHue : Generator Float
 firstHue =
-    Random.float 0 1
+    Random.float 0 360
 
 
+{-| takes hue in degrees (0..360)
+-}
 moveHue : Float -> Float
-moveHue hue01 =
+moveHue hue =
     let
         added =
-            hue01 + goldenRatioConjugate
+            hue + 222.492235949962
     in
-    -- basically modulo 1 for floats...
-    -- because goldenRatioConjugate < 1, we know subtracting once will be enough
-    if added > 1 then
-        added - 1
+    -- basically modulo 360 for floats...
+    -- because the constant we're adding < 360, we know subtracting once will be enough
+    if added > 360 then
+        added - 360
     else
         added
-
-
-{-| 1/phi or phi-1, pick your poison
--}
-goldenRatioConjugate : Float
-goldenRatioConjugate =
-    0.618033988749895
