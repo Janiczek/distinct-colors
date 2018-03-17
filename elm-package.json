@@ -1,5 +1,5 @@
 {
-    "version": "2.1.0",
+    "version": "2.2.0",
     "summary": "Generator of list of colors distinct to each other (consecutively)",
     "repository": "https://github.com/Janiczek/distinct-colors.git",
     "license": "BSD3",
