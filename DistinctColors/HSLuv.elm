@@ -53,7 +53,7 @@ randomColor :
     -> Generator Color
 randomColor { saturation, lightness, alpha } =
     Internal.randomColor
-        (\hue -> HSLuv.hsluva hue saturation lightness alpha)
+        (\hue -> HSLuv.hsluva hue (saturation * 100) (lightness * 100) alpha)
 
 
 {-| Generates a list of colors distinct from each other (consecutively).
@@ -68,7 +68,7 @@ colors :
     -> Generator (List Color)
 colors { saturation, lightness, alpha, numberOfColors } =
     Internal.colors
-        (\hue -> HSLuv.hsluva hue saturation lightness alpha)
+        (\hue -> HSLuv.hsluva hue (saturation * 100) (lightness * 100) alpha)
         nextColor
         numberOfColors
 
